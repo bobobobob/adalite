@@ -17,6 +17,7 @@ const ShelleyJsCryptoProvider = ({walletSecretDef: {rootSecret, derivationScheme
   const deriveXpub = (derivationPath) => deriveHdNode(derivationPath).extendedPublicKey
 
   const deriveXpriv = (derivationPath) => deriveHdNode(derivationPath).secretKey
+  // TODO(merc): not sure if not duplicate with the one from cardano-crypto.js
 
   function deriveHdNode(derivationPath) {
     return derivationPath.reduce(deriveChildHdNode, masterHdNode)
@@ -37,6 +38,7 @@ const ShelleyJsCryptoProvider = ({walletSecretDef: {rootSecret, derivationScheme
 
   async function signTx(txAux, addressToAbsPathMapper) {
     const prepareUtxoInput = (input, hdnode) => {
+      // TODO(merc): move all these into prepare input method or something
       return {
         type: 'utxo',
         txid: input.txHash,
@@ -87,6 +89,7 @@ const ShelleyJsCryptoProvider = ({walletSecretDef: {rootSecret, derivationScheme
 
     const inputs = txAux.inputs.map((input) => prepareInput(txAux.type, input))
     const outpustAndChange = txAux.change ? [...txAux.outputs, txAux.change] : [...txAux.outputs]
+    // TODO(merc): why even get change separately? refactor
     const outputs = outpustAndChange.length ? [...outpustAndChange].map(prepareOutput) : []
     const cert = txAux.cert ? prepareCert(inputs[0]) : null
 
@@ -95,6 +98,8 @@ const ShelleyJsCryptoProvider = ({walletSecretDef: {rootSecret, derivationScheme
       outputs,
       cert,
       chainConfig: network.chainConfig,
+      // TODO(merc): maybe deconstruct to {chainconfig}
+      // find out what else config has and if its used
     })
     return tx
   }

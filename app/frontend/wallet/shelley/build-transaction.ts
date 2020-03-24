@@ -36,7 +36,7 @@ export interface TxPlan {
   fee: Lovelace
 }
 
-export function computeTxPlan(
+export function computeTxPlan( // TODO(merc): refactor this all
   type,
   chainConfig,
   inputs: Array<Input>,
@@ -109,7 +109,7 @@ export function selectMinimalTxPlan(
     }
     : null
 
-  coins = coins || computeRequiredTxFee(chainConfig)([{address}], [], cert)
+  coins = coins || computeRequiredTxFee(chainConfig)([{address}], [], cert) // TODO(merc): this is nonsense
 
   const outputs = address ? [{address, coins}] : []
   if (donationAmount > 0) {
@@ -127,7 +127,7 @@ export function selectMinimalTxPlan(
   return {estimatedFee: computeRequiredTxFee(chainConfig)(inputs, outputs, cert)}
 }
 
-export function computeAccountTxPlan(
+export function computeAccountTxPlan( // TODO(merc): existence of this function makes no sense
   chainConfig,
   dstAddress,
   amount,

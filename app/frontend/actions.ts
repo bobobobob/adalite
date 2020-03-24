@@ -418,7 +418,7 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
       return
     }
 
-    const amount = state.sendAmount.coins as Lovelace
+    const amount = state.sendAmount.coins as Lovelace // TODO(merc): rename to coins
     const donationAmount = state.donationAmount.coins as Lovelace
     let plan
     const address = state.sendAddress.fieldValue
@@ -477,7 +477,7 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
   const convertNonStakingUtxos = async (state) => {
     loadingAction(state, 'Preparing transaction...')
     const address = await wallet.getChangeAddress()
-    const {sendAmount} = await wallet.getMaxNonStakingAmount(address)
+    const {sendAmount} = await wallet.getMaxNonStakingAmount(address) // TODO(merc): rename to coins
     const balance = state.balance
     let plan
     try {
@@ -505,6 +505,7 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
       confirmTransaction(getState(), 'convert')
       stopLoadingAction(state, {})
     } catch (e) {
+      // FIXME(merc): this might show two modals
       stopLoadingAction(state, {})
       handleError('transactionSubmissionError', e)
       setState({
@@ -537,10 +538,12 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
         'delegationValidationError',
         {
           code: e.name === 'DelegationAccountBalanceError' ? e.name : 'DelegationFeeError',
+          // TODO(merc): dont like this much, refactor
         },
         {
           calculatingDelegationFee: false,
           showTxSuccess: state.showTxSuccess === 'send' ? state.showTxSuccess : '',
+          // TODO(merc): comment this
         }
       )
       return
@@ -567,6 +570,7 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
   const debouncedCalculateDelegationFee = debounceEvent(calculateDelegationFee, 500)
 
   const validateDelegationAndCalculateDelegationFee = () => {
+    // TODO(merc): renam to validate....CalcuteFee
     const state = getState()
     const delegationValidationError = state.shelleyDelegation.selectedPools.every(
       (pool) => pool.validationError || pool.poolIdentifier === ''
@@ -714,6 +718,7 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
   }
 
   const isSendAmountNonPositive = (fieldValue, validationError) =>
+    // TODO(merc): checkout what is this for
     fieldValue === '' ||
     (validationError &&
       (validationError.code === 'SendAmountIsNotPositive' ||
@@ -925,6 +930,7 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
       txSubmitResult = await wallet.submitTx(signedTx)
 
       if (!txSubmitResult) {
+        // TODO(merc): cant we check and from this in submitTx method
         debugLog(txSubmitResult)
         throw NamedError('TransactionRejectedByNetwork')
       }
@@ -936,7 +942,7 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
       const didDonate = address === ADA_DONATION_ADDRESS || donationAmount > 0
 
       if (didDonate) {
-        setState({showThanksForDonation: true})
+        setState({showThanksForDonation: true}) // TODO(merc): refactor
       }
     } catch (e) {
       handleError('transactionSubmissionError', e, {
@@ -951,8 +957,8 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
       resetAmountFields(state)
       resetDelegationField()
       resetTransactionSummary()
-      await reloadWalletInfo(state)
       wallet.generateNewSeeds()
+      await reloadWalletInfo(state)
       setState({
         waitingForHwWallet: false,
         showTxSuccess: sendResponse && sendResponse.success ? txType : '',
@@ -1045,6 +1051,7 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
   }
 
   return {
+    // TODO(merc): sort these exports and also sort methods in file
     loadingAction,
     stopLoadingAction,
     setAuthMethod,

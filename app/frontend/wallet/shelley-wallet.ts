@@ -21,9 +21,9 @@ import {isShelleyAddress, bechAddressToHex, isGroup, isSingle} from './shelley/h
 import request from './helpers/request'
 import {ADALITE_CONFIG} from '../config'
 
-const isUtxoProfitable = () => true
+const isUtxoProfitable = () => true // TODO(merc): always?
 
-const isUtxoNonStaking = ({address}) => !isGroup(address)
+const isUtxoNonStaking = ({address}) => !isGroup(address) // TODO(merc): refactor these
 
 const isUtxoStaking = ({address}) => isGroup(address)
 
@@ -106,6 +106,7 @@ const MyAddresses = ({accountIndex, cryptoProvider, gapLimit, blockchainExplorer
   }
 
   function fixedPathMapper() {
+    // TODO(merc): what is the difference with the above?
     const mappingLegacy = {
       ...legacyIntManager.getAddressToAbsPathMapping(),
       ...legacyExtManager.getAddressToAbsPathMapping(),
@@ -127,7 +128,7 @@ const MyAddresses = ({accountIndex, cryptoProvider, gapLimit, blockchainExplorer
   }
 
   async function getVisibleAddressesWithMeta() {
-    // TODO : only group?
+    // TODO(merc): only group?
     const addresses = await groupExtManager.discoverAddressesWithMeta()
     return addresses //filterUnusedEndAddresses(addresses, config.ADALITE_DEFAULT_ADDRESS_COUNT)
   }
@@ -160,12 +161,13 @@ const MyAddresses = ({accountIndex, cryptoProvider, gapLimit, blockchainExplorer
 }
 
 const ShelleyBlockchainExplorer = (config) => {
+  // TODO(merc): move to separate file
   const be = BlockchainExplorer(config)
 
   const fixAddress = (address) => (isShelleyAddress(address) ? bechAddressToHex(address) : address)
   const fix = (addresses: Array<string>): Array<string> => {
     return addresses.map(fixAddress)
-  }
+  } // TODO(merc): probably better name than "fix"?
 
   async function getAccountInfo(accountPubkeyHex) {
     const url = `${ADALITE_CONFIG.ADALITE_BLOCKCHAIN_EXPLORER_URL}/api/v2/account/info`
@@ -222,9 +224,10 @@ const ShelleyBlockchainExplorer = (config) => {
     getValidStakepools,
   }
 }
+
 const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvider}: any) => {
   const {
-    getMaxDonationAmount: _getMaxDonationAmount,
+    getMaxDonationAmount: _getMaxDonationAmount, // TODO(merc): why use these _
     getMaxSendableAmount: _getMaxSendableAmount,
   } = MaxAmountCalculator(computeRequiredTxFee(cryptoProvider.network.chainConfig))
 
@@ -238,7 +241,7 @@ const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvide
   const blockchainExplorer = ShelleyBlockchainExplorer(config)
 
   const myAddresses = MyAddresses({
-    accountIndex: 0,
+    accountIndex: 0, // TODO(merc): move this to congif
     cryptoProvider,
     gapLimit: config.ADALITE_GAP_LIMIT,
     blockchainExplorer,
@@ -255,10 +258,9 @@ const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvide
   async function submitTx(signedTx) {
     const {transaction, fragmentId} = signedTx
     const response = await blockchainExplorer.submitTxRaw(fragmentId, transaction).catch((e) => {
-      debugLog(e)
+      debugLog(e) // TODO(merc): probably no need to debugLog
       throw e
     })
-
     return response
   }
 
@@ -296,7 +298,7 @@ const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvide
 
   async function getMaxNonStakingAmount(address) {
     const utxos = (await getUTxOs()).filter(isUtxoNonStaking)
-    return _getMaxSendableAmount(utxos, address, false, 0, false)
+    return _getMaxSendableAmount(utxos, address, false, 0, false) // TODO(merc): what does this do?
   }
 
   const uTxOTxPlanner = async (args, txType) => {
@@ -306,8 +308,8 @@ const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvide
       nonStakingConversion: isUtxoNonStaking,
       utxo: () => true,
     }
-    const utxoFilter = utxoFilters[txType]
-    const accountAddress = await myAddresses.accountAddrManager._deriveAddress(0)
+    const utxoFilter = utxoFilters[txType] // TODO(merc): refactor
+    const accountAddress = await myAddresses.accountAddrManager._deriveAddress(0) // TODO(merc): account index
     const availableUtxos = (await getUTxOs()).filter(utxoFilter)
     const changeAddress = await getChangeAddress()
     // we do it pseudorandomly to guarantee fee computation stability
@@ -327,6 +329,7 @@ const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvide
   }
 
   const accountTxPlanner = async (args, txType) => {
+    // TODO(merc): refactor remove
     const srcAddress = await myAddresses.accountAddrManager._deriveAddress(0)
     const {dstAddress, amount, pools, accountCounter, accountBalance} = args
     const plan = computeAccountTxPlan(
@@ -343,6 +346,7 @@ const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvide
 
   async function getTxPlan(args, txType) {
     const txPlaner = {
+      // TODO(merc): refactor
       utxo: uTxOTxPlanner,
       nonStakingConversion: uTxOTxPlanner,
       delegation: uTxOTxPlanner,
@@ -353,7 +357,8 @@ const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvide
   }
 
   async function getWalletInfo() {
-    const {stakingBalance, nonStakingBalance, balance} = await getBalance()
+    const {stakingBalance, nonStakingBalance, balance} = await getBalance() // TODO(merc): balances?
+    // TODO(merc): call this rather a groupAddress balance and nonStaking // rethink
     const shelleyAccountInfo = await getAccountInfo()
     const visibleAddresses = await getVisibleAddresses()
     const transactionHistory = await getHistory()
@@ -383,7 +388,7 @@ const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvide
   }
 
   async function getHistory() {
-    // TODO refactor to getTxHistory?
+    // TODO(merc): refactor to getTxHistory?
     const {legacy, group, single, account} = await myAddresses.discoverAllAddresses()
     return blockchainExplorer.getTxHistory([...single, ...group, ...legacy, account])
   }
@@ -424,7 +429,7 @@ const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvide
       const {legacy, group, single} = await myAddresses.discoverAllAddresses()
       const groupUtxos = await blockchainExplorer.fetchUnspentTxOutputs(group)
       const nonGroupUtxos = await blockchainExplorer.fetchUnspentTxOutputs([...legacy, ...single])
-      const groupUtxoAddresses = groupUtxos
+      const groupUtxoAddresses = groupUtxos // TODO(merc): look into this
         .map(({address}) => isGroup(address) && address)
         .filter((a) => !!a)
       const uniqueNonGroupUtxos = nonGroupUtxos
@@ -439,7 +444,7 @@ const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvide
   async function getVisibleAddresses() {
     const single = await myAddresses.singleExtManager.discoverAddressesWithMeta()
     const group = await myAddresses.groupExtManager.discoverAddressesWithMeta()
-    // TODO why not get also the account address
+    // TODO(merc): why not get also the account address
     // need to change the ..withMeta function to do that
     return [...group, ...single] //filterUnusedEndAddresses(addresses, config.ADALITE_DEFAULT_ADDRESS_COUNT)
   }

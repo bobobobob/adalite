@@ -68,7 +68,7 @@ const MyAddresses = ({accountIndex, cryptoProvider, gapLimit, blockchainExplorer
 
   const accountAddrManager = AddressManager({
     addressProvider: ShelleyStakingAccountProvider(cryptoProvider, accountIndex),
-    gapLimit: 1,
+    gapLimit: 1, // TODO(merc): make this argument voluntary, default to 1?
     blockchainExplorer,
   })
 
@@ -241,7 +241,7 @@ const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvide
   const blockchainExplorer = ShelleyBlockchainExplorer(config)
 
   const myAddresses = MyAddresses({
-    accountIndex: 0, // TODO(merc): move this to congif
+    accountIndex: 0, // TODO(merc): move this to congif?
     cryptoProvider,
     gapLimit: config.ADALITE_GAP_LIMIT,
     blockchainExplorer,
@@ -287,6 +287,7 @@ const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvide
   }
 
   async function getMaxSendableAmount(address, hasDonation, donationAmount, donationType) {
+    // TODO(merc): why do we need hasDonation? maybe an object for donation stuff and then deconstruct in the end
     const utxos = (await getUTxOs()).filter(isUtxoProfitable)
     return _getMaxSendableAmount(utxos, address, hasDonation, donationAmount, donationType)
   }
@@ -357,8 +358,7 @@ const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvide
   }
 
   async function getWalletInfo() {
-    const {stakingBalance, nonStakingBalance, balance} = await getBalance() // TODO(merc): balances?
-    // TODO(merc): call this rather a groupAddress balance and nonStaking // rethink
+    const {groupAddressBalance, nonStakingBalance, balance} = await getBalance()
     const shelleyAccountInfo = await getAccountInfo()
     const visibleAddresses = await getVisibleAddresses()
     const transactionHistory = await getHistory()
@@ -367,7 +367,7 @@ const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvide
       balance,
       shelleyBalances: {
         nonStakingBalance,
-        stakingBalance: stakingBalance + shelleyAccountInfo.value,
+        stakingBalance: groupAddressBalance + shelleyAccountInfo.value,
         rewardsAccountBalance: shelleyAccountInfo.value,
       },
       shelleyAccountInfo,
@@ -379,16 +379,16 @@ const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvide
   async function getBalance() {
     const {legacy, group, single} = await myAddresses.discoverAllAddresses()
     const nonStakingBalance = await blockchainExplorer.getBalance([...legacy, ...single])
-    const stakingBalance = await blockchainExplorer.getBalance(group)
+    const groupAddressBalance = await blockchainExplorer.getBalance(group)
     return {
-      stakingBalance,
+      groupAddressBalance,
       nonStakingBalance,
-      balance: nonStakingBalance + stakingBalance,
+      balance: nonStakingBalance + groupAddressBalance,
     }
   }
 
   async function getHistory() {
-    // TODO(merc): refactor to getTxHistory?
+    // TODO(merc): refactor to getTxHistory? or add delegation history or rewards history
     const {legacy, group, single, account} = await myAddresses.discoverAllAddresses()
     return blockchainExplorer.getTxHistory([...single, ...group, ...legacy, account])
   }
@@ -429,9 +429,10 @@ const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvide
       const {legacy, group, single} = await myAddresses.discoverAllAddresses()
       const groupUtxos = await blockchainExplorer.fetchUnspentTxOutputs(group)
       const nonGroupUtxos = await blockchainExplorer.fetchUnspentTxOutputs([...legacy, ...single])
-      const groupUtxoAddresses = groupUtxos // TODO(merc): look into this
+      const groupUtxoAddresses = groupUtxos
         .map(({address}) => isGroup(address) && address)
         .filter((a) => !!a)
+      // we have to filter out single address utxos with same address
       const uniqueNonGroupUtxos = nonGroupUtxos
         .map((u) => !groupUtxoAddresses.includes(u.address) && u)
         .filter((u) => !!u)

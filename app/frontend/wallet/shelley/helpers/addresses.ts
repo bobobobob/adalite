@@ -67,7 +67,7 @@ export const groupAddressFromXpub = (spendXpub: Xpub, stakeXpub: Xpub, network: 
 }
 
 export const isShelleyAddress = (address: string): boolean => {
-  return address.startsWith('addr1')
+  return address.startsWith('addr1') // TODO(merc): make proper
 }
 
 export const isGroup = (address: string): boolean => {

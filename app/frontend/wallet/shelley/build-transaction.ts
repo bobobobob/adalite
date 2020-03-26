@@ -27,12 +27,17 @@ export type Output = {
   coins: Lovelace
 }
 
+export type DelegationCert = {
+  id: string
+  ratio: number
+}
+
 export interface TxPlan {
   type: string
   inputs: Array<Input>
   outputs: Array<Output>
   change: Output | null
-  cert?: Array<{id: string; ratio: number}>
+  cert?: Array<DelegationCert>
   fee: Lovelace
 }
 

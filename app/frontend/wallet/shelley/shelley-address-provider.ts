@@ -21,7 +21,7 @@ const shelleyStakeAccountPath = (account: number) => {
     HARDENED_THRESHOLD + 1815,
     HARDENED_THRESHOLD + account,
     2, // "staking key chain"
-    0, // TODO(merc): from config??
+    0, // TODO(merc): add explenation "always 0"
   ]
 }
 

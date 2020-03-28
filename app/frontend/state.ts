@@ -49,7 +49,7 @@ export interface State {
   showCustomDonationInput: boolean
   donationAmount: any // TODO
   maxDonationAmount: number
-  percentageDonationValue: number
+  percentageDonationValue: number // TODO(merc): Lovelace or ADA
   percentageDonationText: string
   thresholdAmountReached: boolean
 

@@ -60,14 +60,14 @@ const ShelleyJsCryptoProvider = ({walletSecretDef: {rootSecret, derivationScheme
       }
     }
 
-    const prepareInput = (type, input) => {
+    const prepareInput = (input) => {
       const path = addressToAbsPathMapper(input.address)
       const hdnode = deriveHdNode(path)
       const inputPreparator = {
         utxo: prepareUtxoInput,
         account: prepareAccountInput,
       }
-      return inputPreparator[type](input, hdnode)
+      return inputPreparator[input.type](input, hdnode)
     }
 
     const prepareOutput = (output) => {
@@ -78,19 +78,20 @@ const ShelleyJsCryptoProvider = ({walletSecretDef: {rootSecret, derivationScheme
     }
 
     const prepareCert = (input) => {
+      // TODO(merc): input is useless here
       const path = addressToAbsPathMapper(txAux.cert.accountAddress)
       const hdnode = deriveHdNode(path)
       return {
-        type: 'stake_delegation',
+        type: 'stake_delegation', // TODO(merc): change to "certificate_stake_delegation", also in chainlibs
         privkey: Buffer.from(hdnode.secretKey).toString('hex') as HexString,
         pools: txAux.cert.pools,
       }
     }
 
-    const inputs = txAux.inputs.map((input) => prepareInput(txAux.type, input))
+    // const inputs = txAux.inputs.map((input) => prepareInput(txAux.type, input))
+    const inputs = txAux.inputs.map(prepareInput)
     const outpustAndChange = txAux.change ? [...txAux.outputs, txAux.change] : [...txAux.outputs]
-    // TODO(merc): why even get change separately? refactor
-    const outputs = outpustAndChange.length ? [...outpustAndChange].map(prepareOutput) : []
+    const outputs = outpustAndChange.length ? outpustAndChange.map(prepareOutput) : []
     const cert = txAux.cert ? prepareCert(inputs[0]) : null
 
     const tx = buildTransaction({

@@ -124,7 +124,7 @@ const CardanoTrezorCryptoProvider = ({network, config}) => {
     if (response.error || !response.success) {
       debugLog(response)
       throw NamedError(
-        'TrezorError',
+        'TrezorError', // TODO(merc): set translation for this error and send response as message
         'Trezor operation failed, please make sure ad blockers are switched off for this site'
       )
     }

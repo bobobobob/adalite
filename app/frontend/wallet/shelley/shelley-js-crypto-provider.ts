@@ -40,7 +40,7 @@ const ShelleyJsCryptoProvider = ({walletSecretDef: {rootSecret, derivationScheme
     const prepareUtxoInput = (input, hdnode) => {
       // TODO(merc): move all these into prepare input method or something
       return {
-        type: 'utxo',
+        type: input.type,
         txid: input.txHash,
         value: input.coins,
         outputNo: input.outputIndex,
@@ -52,15 +52,16 @@ const ShelleyJsCryptoProvider = ({walletSecretDef: {rootSecret, derivationScheme
 
     const prepareAccountInput = (input, hdnode) => {
       return {
-        type: 'account',
+        type: input.type,
         address: input.address,
         privkey: Buffer.from(hdnode.secretKey).toString('hex'),
-        accountCounter: input.counter,
+        accountCounter: input.counter, // TODO(merc): refactor so its the same
         value: input.coins,
       }
     }
 
     const prepareInput = (input) => {
+      // TODO(merc): refactor like in chainlibs
       const path = addressToAbsPathMapper(input.address)
       const hdnode = deriveHdNode(path)
       const inputPreparator = {
@@ -70,21 +71,20 @@ const ShelleyJsCryptoProvider = ({walletSecretDef: {rootSecret, derivationScheme
       return inputPreparator[input.type](input, hdnode)
     }
 
-    const prepareOutput = (output) => {
+    const prepareOutput = ({address, coins}) => {
       return {
-        address: output.address,
-        value: output.coins,
+        address,
+        value: coins,
       }
     }
 
-    const prepareCert = (input) => {
-      // TODO(merc): input is useless here
+    const prepareCert = ({type, pools}) => {
       const path = addressToAbsPathMapper(txAux.cert.accountAddress)
       const hdnode = deriveHdNode(path)
       return {
         type: 'stake_delegation', // TODO(merc): change to "certificate_stake_delegation", also in chainlibs
         privkey: Buffer.from(hdnode.secretKey).toString('hex') as HexString,
-        pools: txAux.cert.pools,
+        pools,
       }
     }
 
@@ -92,7 +92,7 @@ const ShelleyJsCryptoProvider = ({walletSecretDef: {rootSecret, derivationScheme
     const inputs = txAux.inputs.map(prepareInput)
     const outpustAndChange = txAux.change ? [...txAux.outputs, txAux.change] : [...txAux.outputs]
     const outputs = outpustAndChange.length ? outpustAndChange.map(prepareOutput) : []
-    const cert = txAux.cert ? prepareCert(inputs[0]) : null
+    const cert = txAux.cert ? prepareCert(txAux.cert) : null
 
     const tx = buildTransaction({
       inputs,

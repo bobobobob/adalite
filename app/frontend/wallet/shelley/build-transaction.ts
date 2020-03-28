@@ -102,8 +102,8 @@ export function selectMinimalTxPlan(
   utxos: Array<any>, //utxos
   changeAddress,
   address,
-  donationAmount,
   coins?,
+  donationAmount?,
   pools?,
   accountAddress?
 ): any {
@@ -118,10 +118,7 @@ export function selectMinimalTxPlan(
       accountAddress, // TODO: address: accountAddress
     }
     : null
-
-  coins = coins || computeRequiredTxFee(chainConfig)([{address}], [], cert) // TODO(merc): this is nonsense
-
-  const outputs = address ? [{address, coins}] : [] // TODO(merc): rather base it on existence of pools
+  const outputs = coins ? [{address, coins}] : [] // TODO(merc): rather base it on existence of coins
   if (donationAmount > 0) {
     outputs.push({address: ADA_DONATION_ADDRESS, coins: donationAmount})
   }

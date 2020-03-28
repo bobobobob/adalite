@@ -304,65 +304,10 @@ const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvide
     return _getMaxSendableAmount(utxos, address, false, 0, false) // TODO(merc): what does this do?
   }
 
-  // const uTxOTxPlanner = async (args, txType) => {
-  //   const {address, coins, donationAmount, pools} = args
-  //   const utxoFilters = {
-  //     delegation: isShelleyUtxo, // TODO(merc): use only shelley while we are not sure legacy works as well
-  //     nonStakingConversion: isUtxoNonStaking,
-  //     utxo: () => true,
-  //   }
-  //   const utxoFilter = utxoFilters[txType] // TODO(merc): refactor
-  //   const accountAddress = await myAddresses.accountAddrManager._deriveAddress(0) // TODO(merc): account index
-  //   const availableUtxos = (await getUTxOs()).filter(utxoFilter)
-  //   const changeAddress = await getChangeAddress()
-  //   // we do it pseudorandomly to guarantee fee computation stability
-  //   const randomGenerator = PseudoRandom(seeds.randomInputSeed)
-  //   const shuffledUtxos = shuffleArray(availableUtxos, randomGenerator)
-  //   const plan = selectMinimalTxPlan(
-  //     cryptoProvider.network.chainConfig,
-  //     shuffledUtxos,
-  //     address,
-  //     donationAmount,
-  //     changeAddress,
-  //     coins,
-  //     pools,
-  //     accountAddress
-  //   )
-  //   return plan
-  // }
-
-  // const accountTxPlanner = async (args, txType) => {
-  //   // TODO(merc): refactor remove
-  //   const srcAddress = await myAddresses.accountAddrManager._deriveAddress(0)
-  //   const {dstAddress, amount, pools, accountCounter, accountBalance} = args
-  //   const plan = computeAccountTxPlan(
-  //     cryptoProvider.network.chainConfig,
-  //     dstAddress,
-  //     amount,
-  //     srcAddress,
-  //     pools,
-  //     accountCounter,
-  //     accountBalance
-  //   )
-  //   return plan
-  // }
-
-  // async function getTxPlan(args, txType) {
-  //   const txPlaner = {
-  //     // TODO(merc): refactor
-  //     utxo: uTxOTxPlanner,
-  //     nonStakingConversion: uTxOTxPlanner,
-  //     delegation: uTxOTxPlanner,
-  //     account: accountTxPlanner,
-  //   }
-  //   const plan = txPlaner[txType](args, txType)
-  //   return plan
-  // }
-
   type utXoArgs = {
-    address: string
-    donationAmount: Lovelace
-    coins: Lovelace
+    address?: string
+    donationAmount?: Lovelace
+    coins?: Lovelace
     pools?: any
     txType?: string
   }
@@ -372,7 +317,7 @@ const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvide
     const changeAddress = await getChangeAddress()
     const availableUtxos = await getUTxOs()
     const nonStakingUtxos = availableUtxos.filter(({address}) => !isGroup(address))
-    const groupAddressUtxos = availableUtxos.filter(isGroup)
+    const groupAddressUtxos = availableUtxos.filter(({address}) => isGroup(address))
     const randomGenerator = PseudoRandom(seeds.randomInputSeed)
     const shuffledUtxos =
       txType === 'convert'

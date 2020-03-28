@@ -524,7 +524,7 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
     let plan
     const address = state.sendAddress.fieldValue
     try {
-      plan = await wallet.getTxPlan({address, coins: amount, donationAmount, type: 'sendAda'})
+      plan = await wallet.getTxPlan({address, coins: amount, donationAmount, txType: 'sendAda'})
     } catch (e) {
       setErrorState('sendAmountValidationError', {code: e.name})
       setState({
@@ -698,14 +698,16 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
     const balance = state.balance
     let plan
     try {
+      // TODO(merc): maybe this plan calcualting part with sendTransactionsummary can be in function
       plan = await wallet.getTxPlan({
         address,
         coins: sendAmount,
         donationAmount: null,
-        type: 'convert',
+        txType: 'convert',
       })
       if (!plan || !plan.fee || balance < plan.fee) {
         throw NamedError('NonStakingConversionError')
+        // TODO(merc): this can throw some plannnigErrro and be catched into som specific
       }
       setState({
         sendTransactionSummary: {
@@ -751,7 +753,7 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
     const balance = state.balance
     let plan
     try {
-      plan = await wallet.getTxPlan({amount: null, pools, balance, type: 'delegate'})
+      plan = await wallet.getTxPlan({coins: null, pools, txType: 'delegate'})
       if (!plan || !plan.fee || balance < plan.fee) {
         throw NamedError('DelegationAccountBalanceError')
       }

@@ -356,9 +356,7 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
 
   const getPercentageDonationProperties = () => {
     const state = getState()
-
     const amount = state.sendAmount.coins
-
     const preferredDonation: Lovelace = roundWholeAdas((amount * 0.002) as Lovelace) as Lovelace
 
     return preferredDonation <= state.maxDonationAmount
@@ -451,7 +449,6 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
       newMaxDonationAmount = 0
       resetDonation()
     }
-
     setState({
       maxDonationAmount: newMaxDonationAmount,
     })
@@ -518,54 +515,57 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
       })
       return
     }
-
     const amount = state.sendAmount.coins as Lovelace // TODO(merc): rename to coins
     const donationAmount = state.donationAmount.coins as Lovelace
     let plan
     const address = state.sendAddress.fieldValue
     try {
-      plan = await wallet.getTxPlan({address, coins: amount, donationAmount, txType: 'sendAda'})
+      plan = await prepareTxPlan({address, coins: amount, donationAmount, txType: 'sendAda'})
+      const newState = getState() // if the values changed meanwhile
+      if (
+        newState.sendAmount.fieldValue !== state.sendAmount.fieldValue ||
+        newState.sendAddress.fieldValue !== state.sendAddress.fieldValue ||
+        newState.donationAmount.fieldValue !== state.donationAmount.fieldValue
+      ) {
+        return
+      }
+      setErrorState(
+        'sendAmountValidationError',
+        feeValidator(
+          amount,
+          plan.fee != null ? plan.fee : plan.estimatedFee,
+          donationAmount,
+          state.balance
+        )
+      )
     } catch (e) {
       setErrorState('sendAmountValidationError', {code: e.name})
+      return
+    } finally {
       setState({
+        transactionFee: plan && plan.fee != null ? plan.fee : plan.estimatedFee,
         calculatingFee: false,
+        showTxSuccess: '', // TODO(merc): this shoud be boolean or string
       })
-      return
     }
+  }
 
-    // if we reverted value in the meanwhile, do nothing, otherwise update
-    const newState = getState()
-    if (
-      newState.sendAmount.fieldValue !== state.sendAmount.fieldValue ||
-      newState.sendAddress.fieldValue !== state.sendAddress.fieldValue ||
-      newState.donationAmount.fieldValue !== state.donationAmount.fieldValue
-    ) {
-      return
+  const prepareTxPlan = async (args) => {
+    const {coins, donationAmount} = args
+    const plan = await wallet.getTxPlan(args)
+    if (!plan || !plan.fee) {
+      throw NamedError('PlanCalculationError')
     }
-
     setState({
       sendTransactionSummary: {
-        amount,
-        donation: donationAmount,
+        amount: coins || 0,
+        donation: donationAmount || 0,
         fee: plan.fee != null ? plan.fee : plan.estimatedFee,
         plan: plan.fee != null ? plan : null,
-        type: 'send',
+        type: 'stake', // TODO(merc): this has nothing to de in here
       },
-      transactionFee: plan.fee != null ? plan.fee : plan.estimatedFee,
     })
-    setErrorState(
-      'sendAmountValidationError',
-      feeValidator(
-        amount,
-        plan.fee != null ? plan.fee : plan.estimatedFee,
-        donationAmount,
-        state.balance
-      )
-    )
-    setState({
-      calculatingFee: false,
-      showTxSuccess: '', // TODO(merc): this shoud be boolean or string
-    })
+    return plan
   }
 
   const resetAmountFields = (state) => {
@@ -698,36 +698,51 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
     const balance = state.balance
     let plan
     try {
-      // TODO(merc): maybe this plan calcualting part with sendTransactionsummary can be in function
-      plan = await wallet.getTxPlan({
+      plan = await prepareTxPlan({
         address,
         coins: sendAmount,
         donationAmount: null,
         txType: 'convert',
       })
-      if (!plan || !plan.fee || balance < plan.fee) {
-        throw NamedError('NonStakingConversionError')
-        // TODO(merc): this can throw some plannnigErrro and be catched into som specific
-      }
-      setState({
-        sendTransactionSummary: {
-          amount: sendAmount,
-          donation: 0 as Lovelace,
-          fee: plan.fee != null ? plan.fee : plan.estimatedFee,
-          plan: plan.fee != null ? plan : null,
-          type: 'stake', // TODO(merc): this has nothing to de in here
-        },
-      })
       confirmTransaction(getState(), 'convert')
-      stopLoadingAction(state, {})
     } catch (e) {
       // FIXME(merc): this might show two modals
-      stopLoadingAction(state, {})
-      setErrorState('transactionSubmissionError', e)
+      setErrorState('transactionSubmissionError', NamedError('NonStakingConversionError'))
       setState({
         showTransactionErrorModal: true,
       })
+    } finally {
+      stopLoadingAction(state, {})
     }
+    // try {
+    //   plan = await prepareTxPlan({
+    //     address,
+    //     coins: sendAmount,
+    //     donationAmount: null,
+    //     txType: 'convert',
+    //   })
+    //   if (!plan || !plan.fee || balance < plan.fee) {
+    //     throw NamedError('NonStakingConversionError')
+    //   }
+    //   setState({
+    //     sendTransactionSummary: {
+    //       amount: sendAmount,
+    //       donation: 0 as Lovelace,
+    //       fee: plan.fee != null ? plan.fee : plan.estimatedFee,
+    //       plan: plan.fee != null ? plan : null,
+    //       type: 'stake', // TODO(merc): this has nothing to de in here
+    //     },
+    //   })
+    //   confirmTransaction(getState(), 'convert')
+    //   stopLoadingAction(state, {})
+    // } catch (e) {
+    //   // FIXME(merc): this might show two modals
+    //   stopLoadingAction(state, {})
+    //   setErrorState('transactionSubmissionError', e)
+    //   setState({
+    //     showTransactionErrorModal: true,
+    //   })
+    // }
   }
 
   /* DELEGATE */
@@ -753,42 +768,65 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
     const balance = state.balance
     let plan
     try {
-      plan = await wallet.getTxPlan({coins: null, pools, txType: 'delegate'})
-      if (!plan || !plan.fee || balance < plan.fee) {
-        throw NamedError('DelegationAccountBalanceError')
-      }
-    } catch (e) {
-      setErrorState(
-        'delegationValidationError',
-        {
-          code: e.name === 'DelegationAccountBalanceError' ? e.name : 'DelegationFeeError',
-          // TODO(merc): dont like this much, refactor
+      plan = await prepareTxPlan({coins: null, pools, txType: 'delegate'})
+      setState({
+        shelleyDelegation: {
+          ...state.shelleyDelegation,
+          delegationFee: plan && plan.fee != null ? plan.fee : plan.estimatedFee,
         },
-        {
-          calculatingDelegationFee: false,
-          showTxSuccess: state.showTxSuccess === 'send' ? state.showTxSuccess : '',
-          // TODO(merc): comment this
-        }
-      )
-      return
+      })
+      // if (!plan || !plan.fee || balance < plan.fee) {
+      //   throw NamedError('DelegationAccountBalanceError')
+      // }
+    } catch (e) {
+      setErrorState('delegationValidationError', {
+        code: e.name === 'DelegationAccountBalanceError' ? e.name : 'DelegationFeeError',
+        // TODO(merc): dont like this much, refactor
+      })
+    } finally {
+      setState({
+        calculatingDelegationFee: false,
+        showTxSuccess: state.showTxSuccess === 'send' ? state.showTxSuccess : '',
+        // TODO(merc): comment this
+      })
     }
-    setState({
-      showTxSuccess: state.showTxSuccess === 'send' ? state.showTxSuccess : '',
-    })
-    setState({
-      shelleyDelegation: {
-        ...state.shelleyDelegation,
-        delegationFee: plan.fee != null ? plan.fee : plan.estimatedFee,
-      },
-      sendTransactionSummary: {
-        amount: 0 as Lovelace,
-        donation: 0 as Lovelace,
-        fee: plan.fee != null ? plan.fee : plan.estimatedFee,
-        plan: plan.fee != null ? plan : null,
-        type: 'stake',
-      },
-      calculatingDelegationFee: false,
-    })
+    // try {
+    //   plan = await wallet.getTxPlan({coins: null, pools, txType: 'delegate'})
+    //   if (!plan || !plan.fee || balance < plan.fee) {
+    //     throw NamedError('DelegationAccountBalanceError')
+    //   }
+    // } catch (e) {
+    //   setErrorState(
+    //     'delegationValidationError',
+    //     {
+    //       code: e.name === 'DelegationAccountBalanceError' ? e.name : 'DelegationFeeError',
+    //       // TODO(merc): dont like this much, refactor
+    //     },
+    //     {
+    //       calculatingDelegationFee: false,
+    //       showTxSuccess: state.showTxSuccess === 'send' ? state.showTxSuccess : '',
+    //       // TODO(merc): comment this
+    //     }
+    //   )
+    //   return
+    // }
+    // setState({
+    //   showTxSuccess: state.showTxSuccess === 'send' ? state.showTxSuccess : '',
+    // })
+    // setState({
+    //   shelleyDelegation: {
+    //     ...state.shelleyDelegation,
+    //     delegationFee: plan.fee != null ? plan.fee : plan.estimatedFee,
+    //   },
+    //   sendTransactionSummary: {
+    //     amount: 0 as Lovelace,
+    //     donation: 0 as Lovelace,
+    //     fee: plan.fee != null ? plan.fee : plan.estimatedFee,
+    //     plan: plan.fee != null ? plan : null,
+    //     type: 'stake',
+    //   },
+    //   calculatingDelegationFee: false,
+    // })
   }
 
   const debouncedCalculateDelegationFee = debounceEvent(calculateDelegationFee, 500)

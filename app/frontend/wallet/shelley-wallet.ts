@@ -361,6 +361,7 @@ const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvide
   }
 
   async function getTxPlan(args: utXoArgs | accountArgs) {
+    // TODO rename to utxoTxArgs and accountTxArgs
     const accountAddress = await myAddresses.accountAddrManager._deriveAddress(accountIndex)
     const txPlanners = {
       sendAda: uTxOTxPlanner,
@@ -369,6 +370,7 @@ const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvide
       redeem: accountTxPlanner,
     }
     const plan = txPlanners[args.txType](args, accountAddress)
+    // TODO(merc): maybe do this in try catch or await it so we can distict in fe
     return plan
   }
 

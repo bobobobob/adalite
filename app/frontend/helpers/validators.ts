@@ -20,7 +20,7 @@ const sendAddressValidator = (fieldValue) =>
     ? {code: 'SendAddressInvalidAddress'}
     : null
 
-const sendAmountValidator = (fieldValue, coins) => {
+const sendAmountValidator = (fieldValue, coins, balance) => {
   const floatRegex = /^[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)$/
   const maxAmount = Number.MAX_SAFE_INTEGER
 
@@ -42,11 +42,14 @@ const sendAmountValidator = (fieldValue, coins) => {
   if (coins <= 0) {
     return {code: 'SendAmountIsNotPositive'}
   }
+  if (balance < coins) {
+    return {code: 'SendAmountInsufficientFunds'}
+  }
   return null
 }
 
-const donationAmountValidator = (fieldValue, coins) => {
-  const amountError = sendAmountValidator(fieldValue, coins)
+const donationAmountValidator = (fieldValue, coins, balance) => {
+  const amountError = sendAmountValidator(fieldValue, coins, balance)
   if (amountError) {
     return amountError
   }
@@ -73,6 +76,15 @@ const feeValidator = (sendAmount, transactionFee, donationAmount, balance) => {
     }
   }
   return null
+}
+
+const delegationFeeValidator = (fee, balance) => {
+  if (fee > balance) {
+    return {
+      code: 'DelegationAccountBalanceError',
+      params: {balance},
+    }
+  }
 }
 
 const mnemonicValidator = (mnemonic) => {
@@ -107,6 +119,7 @@ export {
   sendAddressValidator,
   sendAmountValidator,
   feeValidator,
+  delegationFeeValidator,
   mnemonicValidator,
   donationAmountValidator,
   poolIdValidator,

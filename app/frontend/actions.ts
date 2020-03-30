@@ -9,6 +9,7 @@ import {
   mnemonicValidator,
   donationAmountValidator,
   poolIdValidator,
+  delegationFeeValidator,
 } from './helpers/validators'
 import printAda from './helpers/printAda'
 import debugLog from './helpers/debugLog'
@@ -490,11 +491,15 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
     setErrorState('sendAddressValidationError', sendAddressValidator(state.sendAddress.fieldValue))
     setErrorState(
       'sendAmountValidationError',
-      sendAmountValidator(state.sendAmount.fieldValue, state.sendAmount.coins)
+      sendAmountValidator(state.sendAmount.fieldValue, state.sendAmount.coins, state.balance)
     )
     setErrorState(
       'donationAmountValidationError',
-      donationAmountValidator(state.donationAmount.fieldValue, state.donationAmount.coins)
+      donationAmountValidator(
+        state.donationAmount.fieldValue,
+        state.donationAmount.coins,
+        state.balance
+      )
     )
   }
 
@@ -506,7 +511,6 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
     !state.donationAmountValidationError
 
   const calculateFee = async () => {
-    // calculateTxFee
     const state = getState()
     if (!isSendFormFilledAndValid(state)) {
       setState({
@@ -517,8 +521,8 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
     }
     const amount = state.sendAmount.coins as Lovelace // TODO(merc): rename to coins
     const donationAmount = state.donationAmount.coins as Lovelace
-    let plan
     const address = state.sendAddress.fieldValue
+    let plan
     try {
       plan = await prepareTxPlan({address, coins: amount, donationAmount, txType: 'sendAda'})
       const newState = getState() // if the values changed meanwhile
@@ -529,21 +533,25 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
       ) {
         return
       }
-      setErrorState(
-        'sendAmountValidationError',
-        feeValidator(
-          amount,
-          plan.fee != null ? plan.fee : plan.estimatedFee,
-          donationAmount,
-          state.balance
-        )
+      setState({
+        transactionFee: plan.fee || plan.estimatedFee,
+      })
+      const validationError = feeValidator(
+        amount,
+        plan.fee != null ? plan.fee : plan.estimatedFee,
+        donationAmount,
+        state.balance
       )
+      setErrorState('sendAmountValidationError', validationError)
+      if (validationError) {
+        return
+      }
+      setTransactionSummary(plan, amount, donationAmount)
     } catch (e) {
       setErrorState('sendAmountValidationError', {code: e.name})
-      return
     } finally {
       setState({
-        transactionFee: plan && plan.fee != null ? plan.fee : plan.estimatedFee,
+        // transactionFee: plan && (plan.fee != null ? plan.fee : plan.estimatedFee),
         calculatingFee: false,
         showTxSuccess: '', // TODO(merc): this shoud be boolean or string
       })
@@ -551,11 +559,15 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
   }
 
   const prepareTxPlan = async (args) => {
-    const {coins, donationAmount} = args
     const plan = await wallet.getTxPlan(args)
-    if (!plan || !plan.fee) {
+    if (!plan) {
       throw NamedError('PlanCalculationError')
     }
+    // do a whole errorHandling here with error modal
+    return plan
+  }
+
+  const setTransactionSummary = (plan, coins?, donationAmount?) => {
     setState({
       sendTransactionSummary: {
         amount: coins || 0,
@@ -565,7 +577,6 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
         type: 'stake', // TODO(merc): this has nothing to de in here
       },
     })
-    return plan
   }
 
   const resetAmountFields = (state) => {
@@ -606,8 +617,8 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
 
   const validateSendFormAndCalculateFee = () => {
     validateSendForm(getState())
+    resetTransactionSummary()
     const state = getState()
-
     if (isSendFormFilledAndValid(state)) {
       setState({calculatingFee: true})
       debouncedCalculateFee()
@@ -704,6 +715,7 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
         donationAmount: null,
         txType: 'convert',
       })
+      setTransactionSummary(plan, sendAmount)
       confirmTransaction(getState(), 'convert')
     } catch (e) {
       // FIXME(merc): this might show two modals
@@ -747,6 +759,18 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
 
   /* DELEGATE */
 
+  const hasPoolIdentifiersChanged = (shelleyDelegation) => {
+    const {shelleyDelegation: newShelleyDelegation} = getState()
+    return (
+      shelleyDelegation.length === newShelleyDelegation.selectedPools.length &&
+      newShelleyDelegation.selectedPools.every(
+        ({poolIdentifier}, index) =>
+          poolIdentifier === shelleyDelegation.selectedPools[index].poolIdentifier
+      )
+    )
+    // maybe also check if tab changed
+  }
+
   const revokeDelegation = async (state) => {
     loadingAction(state, 'Preparing transaction...')
     await calculateDelegationFee(true)
@@ -769,15 +793,16 @@ export default ({setState, getState}: {setState: SetStateFn; getState: GetStateF
     let plan
     try {
       plan = await prepareTxPlan({coins: null, pools, txType: 'delegate'})
+      if (hasPoolIdentifiersChanged(state)) {
+        return
+      }
       setState({
         shelleyDelegation: {
           ...state.shelleyDelegation,
           delegationFee: plan && plan.fee != null ? plan.fee : plan.estimatedFee,
         },
       })
-      // if (!plan || !plan.fee || balance < plan.fee) {
-      //   throw NamedError('DelegationAccountBalanceError')
-      // }
+      setTransactionSummary(plan)
     } catch (e) {
       setErrorState('delegationValidationError', {
         code: e.name === 'DelegationAccountBalanceError' ? e.name : 'DelegationFeeError',

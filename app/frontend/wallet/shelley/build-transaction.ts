@@ -46,7 +46,7 @@ export interface TxPlan {
   fee: Lovelace
 }
 
-export function computeTxPlan( // TODO(merc): refactor this all
+export function computeTxPlan(
   type,
   chainConfig,
   inputs: Array<Input>,

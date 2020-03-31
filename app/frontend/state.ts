@@ -10,7 +10,7 @@ export interface SendTransactionSummary {
   donation?: Lovelace
   fee: Lovelace
   plan: any
-  type?: any
+  tab?: any
 }
 
 export interface State {
@@ -49,7 +49,7 @@ export interface State {
   showCustomDonationInput: boolean
   donationAmount: any // TODO
   maxDonationAmount: number
-  percentageDonationValue: number // TODO(merc): Lovelace or ADA
+  percentageDonationValue: number // TODO: Lovelace or ADA
   percentageDonationText: string
   thresholdAmountReached: boolean
 

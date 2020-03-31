@@ -21,13 +21,7 @@ import {isShelleyAddress, bechAddressToHex, isGroup, isSingle} from './shelley/h
 import request from './helpers/request'
 import {ADALITE_CONFIG} from '../config'
 
-const isUtxoProfitable = () => true // TODO(merc): always?
-
-const isUtxoNonStaking = ({address}) => !isGroup(address) // TODO(merc): refactor these
-
-const isUtxoStaking = ({address}) => isGroup(address)
-
-const isShelleyUtxo = ({address}) => isGroup(address) || isSingle(address)
+const isUtxoProfitable = () => true // TODO: always?
 
 const MyAddresses = ({accountIndex, cryptoProvider, gapLimit, blockchainExplorer}) => {
   const legacyExtManager = AddressManager({
@@ -68,7 +62,7 @@ const MyAddresses = ({accountIndex, cryptoProvider, gapLimit, blockchainExplorer
 
   const accountAddrManager = AddressManager({
     addressProvider: ShelleyStakingAccountProvider(cryptoProvider, accountIndex),
-    gapLimit: 1, // TODO(merc): make this argument voluntary, default to 1?
+    gapLimit: 1,
     blockchainExplorer,
   })
 
@@ -106,7 +100,6 @@ const MyAddresses = ({accountIndex, cryptoProvider, gapLimit, blockchainExplorer
   }
 
   function fixedPathMapper() {
-    // TODO(merc): what is the difference with the above?
     const mappingLegacy = {
       ...legacyIntManager.getAddressToAbsPathMapping(),
       ...legacyExtManager.getAddressToAbsPathMapping(),
@@ -128,7 +121,6 @@ const MyAddresses = ({accountIndex, cryptoProvider, gapLimit, blockchainExplorer
   }
 
   async function getVisibleAddressesWithMeta() {
-    // TODO(merc): only group?
     const addresses = await groupExtManager.discoverAddressesWithMeta()
     return addresses //filterUnusedEndAddresses(addresses, config.ADALITE_DEFAULT_ADDRESS_COUNT)
   }
@@ -140,7 +132,6 @@ const MyAddresses = ({accountIndex, cryptoProvider, gapLimit, blockchainExplorer
     * This is an intermediate step between legacy mode and full Yoroi compatibility.
     */
     const candidates = await getVisibleAddressesWithMeta()
-    //.filter(isAddressGroupType)
 
     const randomSeedGenerator = PseudoRandom(rngSeed)
     const choice = candidates[randomSeedGenerator.nextInt() % candidates.length]
@@ -161,13 +152,13 @@ const MyAddresses = ({accountIndex, cryptoProvider, gapLimit, blockchainExplorer
 }
 
 const ShelleyBlockchainExplorer = (config) => {
-  // TODO(merc): move to separate file
+  // TODO: move to separate file
   const be = BlockchainExplorer(config)
 
   const fixAddress = (address) => (isShelleyAddress(address) ? bechAddressToHex(address) : address)
   const fix = (addresses: Array<string>): Array<string> => {
     return addresses.map(fixAddress)
-  } // TODO(merc): probably better name than "fix"?
+  } // TODO: probably better name than "fix"?
 
   async function getAccountInfo(accountPubkeyHex) {
     const url = `${ADALITE_CONFIG.ADALITE_BLOCKCHAIN_EXPLORER_URL}/api/v2/account/info`
@@ -243,7 +234,7 @@ const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvide
   const accountIndex = 0
 
   const myAddresses = MyAddresses({
-    accountIndex, // TODO(merc): move this to congif?
+    accountIndex,
     cryptoProvider,
     gapLimit: config.ADALITE_GAP_LIMIT,
     blockchainExplorer,
@@ -260,7 +251,6 @@ const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvide
   async function submitTx(signedTx) {
     const {transaction, fragmentId} = signedTx
     const response = await blockchainExplorer.submitTxRaw(fragmentId, transaction).catch((e) => {
-      debugLog(e) // TODO(merc): probably no need to debugLog
       throw e
     })
     return response
@@ -289,7 +279,8 @@ const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvide
   }
 
   async function getMaxSendableAmount(address, hasDonation, donationAmount, donationType) {
-    // TODO(merc): why do we need hasDonation? maybe an object for donation stuff and then deconstruct in the end
+    // TODO: why do we need hasDonation?
+    // maybe an object for donation stuff and then deconstruct in the end?
     const utxos = (await getUTxOs()).filter(isUtxoProfitable)
     return _getMaxSendableAmount(utxos, address, hasDonation, donationAmount, donationType)
   }
@@ -300,8 +291,8 @@ const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvide
   }
 
   async function getMaxNonStakingAmount(address) {
-    const utxos = (await getUTxOs()).filter(isUtxoNonStaking)
-    return _getMaxSendableAmount(utxos, address, false, 0, false) // TODO(merc): what does this do?
+    const utxos = (await getUTxOs()).filter(({address}) => !isGroup(address))
+    return _getMaxSendableAmount(utxos, address, false, 0, false)
   }
 
   type utXoArgs = {
@@ -369,7 +360,7 @@ const ShelleyWallet = ({config, randomInputSeed, randomChangeSeed, cryptoProvide
       delegate: uTxOTxPlanner,
       redeem: accountTxPlanner,
     }
-    const plan = txPlanners[args.txType](args, accountAddress)
+    const plan = await txPlanners[args.txType](args, accountAddress)
     // TODO(merc): maybe do this in try catch or await it so we can distict in fe
     return plan
   }

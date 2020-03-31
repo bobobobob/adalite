@@ -55,7 +55,7 @@ const ShelleyJsCryptoProvider = ({walletSecretDef: {rootSecret, derivationScheme
         type: input.type,
         address: input.address,
         privkey: Buffer.from(hdnode.secretKey).toString('hex'),
-        accountCounter: input.counter, // TODO(merc): refactor so its the same
+        accountCounter: input.counter, // TODO: refactor so its the same
         value: input.coins,
       }
     }
@@ -88,7 +88,6 @@ const ShelleyJsCryptoProvider = ({walletSecretDef: {rootSecret, derivationScheme
       }
     }
 
-    // const inputs = txAux.inputs.map((input) => prepareInput(txAux.type, input))
     const inputs = txAux.inputs.map(prepareInput)
     const outpustAndChange = txAux.change ? [...txAux.outputs, txAux.change] : [...txAux.outputs]
     const outputs = outpustAndChange.length ? outpustAndChange.map(prepareOutput) : []
@@ -99,8 +98,6 @@ const ShelleyJsCryptoProvider = ({walletSecretDef: {rootSecret, derivationScheme
       outputs,
       cert,
       chainConfig: network.chainConfig,
-      // TODO(merc): maybe deconstruct to {chainconfig}
-      // find out what else config has and if its used
     })
     return tx
   }

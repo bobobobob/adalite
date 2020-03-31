@@ -43,7 +43,10 @@ const sendAmountValidator = (fieldValue, coins, balance) => {
     return {code: 'SendAmountIsNotPositive'}
   }
   if (balance < coins) {
-    return {code: 'SendAmountInsufficientFunds'}
+    return {
+      code: 'SendAmountInsufficientFunds',
+      params: {balance},
+    }
   }
   return null
 }
@@ -96,7 +99,7 @@ const mnemonicValidator = (mnemonic) => {
   return null
 }
 
-const poolIdValidator = (poolId, selectedPools, validStakepools) => {
+const poolIdValidator = (poolIndex, poolId, selectedPools, validStakepools) => {
   if (poolId === '') {
     return null
   }
@@ -106,7 +109,7 @@ const poolIdValidator = (poolId, selectedPools, validStakepools) => {
     }
   }
   const selectedPoolsIds = selectedPools.map((pool) => pool.pool_id)
-  if (selectedPoolsIds.includes(poolId)) {
+  if (selectedPoolsIds.every((id, index) => poolId === id && index !== poolIndex)) {
     return {
       code: 'RudundantStakePool',
     }
